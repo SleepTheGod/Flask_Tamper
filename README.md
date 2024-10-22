@@ -8,16 +8,30 @@ Use WebSockets for real-time traffic analysis.
 
 # Project Structure
 ```bash
-flask_tamper/
+/Flaks_Tamper
 │
-├── app.py                # Main Flask app
-├── static/
-│   ├── css/
-│   │   └── style.css      # Custom CSS for UI
-│   └── js/
-│       └── script.js      # JavaScript for client-side logic
-├── templates/
-│   └── index.html         # Main HTML interface
-└── requirements.txt       # Python dependencies
+├── app.py
+├── capture_proxy.py
+├── ml_detection.py
+├── requirements.txt
+├── vulnerability_scanner.py
+├──interceptors.py
+|
+├── fuzzing
+│   └── payloads.json
+│
+├── models
+│   └── anomaly_model.pkl
+│
+├── static
+│   ├── js
+│   └── style
+│
+└── templates
+    ├── fuzz_results.html
+    ├── index.html
+    ├── layout.html
+    └── scan_results.html
+
 ```
 
