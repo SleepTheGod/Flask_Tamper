@@ -1,1 +1,18 @@
+import numpy as np
+from sklearn.ensemble import IsolationForest
+import joblib
 
+# Generate sample training data
+# For demonstration, we'll create random data. Replace this with your actual dataset.
+np.random.seed(42)
+X_train = np.random.randn(100, 2)  # 100 samples, 2 features
+X_train = np.concatenate((X_train, np.random.randn(10, 2) + 5))  # Adding some anomalies
+
+# Create and train the model
+model = IsolationForest(contamination=0.1)  # Adjust contamination based on expected anomalies
+model.fit(X_train)
+
+# Save the trained model
+joblib.dump(model, 'models/anomaly_model.pkl')
+
+print("Model trained and saved as 'models/anomaly_model.pkl'")
