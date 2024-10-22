@@ -1,89 +1,94 @@
-from flask import Flask, render_template, request, jsonify
-from flask_socketio import SocketIO, emit
+from flask import Flask, request, jsonify, render_template
+from flask_socketio import SocketIO
+from vulnerability_scanner import scan_vulnerability
+from ml_detection import detect_anomaly
 import requests
+import json
 
 app = Flask(__name__)
 socketio = SocketIO(app)
-
-# Store request log
 request_log = []
 
-# Route for the home page
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Capture HTTP request and emit to the frontend
+# Real-time capture and anomaly detection
 @app.route('/capture', methods=['POST'])
 def capture_request():
     data = request.json
-    log_entry = {
-        'url': data['url'],
-        'method': data['method'],
-        'headers': data['headers'],
-        'body': data['body']
-    }
-    request_log.append(log_entry)
-    socketio.emit('new_request', log_entry)
-    return jsonify({'status': 'captured'})
-
-# Modify request and replay it
-@app.route('/modify', methods=['POST'])
-def modify_request():
-    data = request.json
-    method = data['method']
-    url = data['url']
     headers = data['headers']
     body = data['body']
-
-    # Replay the modified request
-    response = requests.request(method, url, headers=headers, data=body)
-    return jsonify({
-        'status': 'success',
-        'response': {
-            'status_code': response.status_code,
-            'headers': dict(response.headers),
-            'body': response.text
-        }
-    })
-
-# Real-time data handling via SocketIO
-@socketio.on('capture_request')
-def handle_capture_request(data):
-    emit('new_request', data)
-
-def deep_analysis(data):
-    # Perform deep inspection and analysis of the request
-    suspicious_headers = ['Authorization', 'Cookie', 'User-Agent']
-    anomalies = []
-
-    # Check headers for unusual values
-    for header, value in data['headers'].items():
-        if header in suspicious_headers and 'admin' in value:
-            anomalies.append(f"Possible admin bypass attempt in {header}: {value}")
-
-    # Check for suspicious payloads
-    if 'SELECT' in data['body'] or 'DROP' in data['body']:
-        anomalies.append("SQL Injection detected in body")
-
-    return anomalies
-
-@app.route('/capture', methods=['POST'])
-def capture_request():
-    data = request.json
-    anomalies = deep_analysis(data)
+    
+    is_anomalous = detect_anomaly(headers, body)
+    anomalies = deep_analysis(data)  # Use deep inspection function
 
     log_entry = {
         'url': data['url'],
         'method': data['method'],
-        'headers': data['headers'],
-        'body': data['body'],
+        'headers': headers,
+        'body': body,
+        'anomalous': is_anomalous,
         'anomalies': anomalies
     }
     request_log.append(log_entry)
     socketio.emit('new_request', log_entry)
     return jsonify({'status': 'captured'})
 
-# Run Flask with SocketIO
+# Deep analysis for filtering and inspection
+def deep_analysis(data):
+    suspicious_headers = ['Authorization', 'Cookie', 'User-Agent']
+    anomalies = []
+
+    # Check headers for suspicious values
+    for header, value in data['headers'].items():
+        if header in suspicious_headers and 'admin' in value:
+            anomalies.append(f"Possible admin bypass attempt in {header}: {value}")
+    
+    if 'SELECT' in data['body'] or 'DROP' in data['body']:
+        anomalies.append("SQL Injection detected in body")
+
+    return anomalies
+
+# Vulnerability scanning endpoint
+@app.route('/scan', methods=['POST'])
+def scan_url():
+    data = request.json
+    url = data.get('url')
+    result = scan_vulnerability(url)
+    return jsonify({'status': 'scanned', 'result': result})
+
+# Fuzzing endpoint
+@app.route('/fuzz', methods=['POST'])
+def fuzz_request():
+    data = request.json
+    url = data['url']
+    headers = data['headers']
+    payloads = fuzz_payloads()
+
+    results = []
+    for attack_type, fuzzes in payloads.items():
+        for fuzz in fuzzes:
+            modified_body = data['body'].replace('<FUZZ>', fuzz)
+            response = requests.request(data['method'], url, headers=headers, data=modified_body)
+            results.append({
+                'payload': fuzz,
+                'status_code': response.status_code,
+                'response_body': response.text
+            })
+    
+    return jsonify({'status': 'fuzzed', 'results': results})
+
+def fuzz_payloads():
+    with open('fuzzing/payloads.json') as f:
+        return json.load(f)
+
+# WebSocket communication capture
+@app.route('/capture_ws', methods=['POST'])
+def capture_websocket():
+    data = request.json
+    print(f"Intercepted WebSocket message: {data['content']}")
+    return jsonify({'status': 'captured'})
+
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000)
