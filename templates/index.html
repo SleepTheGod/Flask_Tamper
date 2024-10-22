@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask Tamper</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>Flask Tamper - Advanced HTTP Request Modifier</h1>
+
+    <div>
+        <h3>Request Capture Log</h3>
+        <table id="traffic_log">
+            <thead>
+                <tr>
+                    <th>URL</th>
+                    <th>Method</th>
+                    <th>Headers</th>
+                    <th>Body</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div>
+        <h3>Modify and Replay Request</h3>
+        <form id="modify_form">
+            <label for="url">URL:</label>
+            <input type="text" id="url" name="url" placeholder="Enter URL">
+            <label for="method">Method:</label>
+            <input type="text" id="method" name="method" placeholder="GET/POST">
+            <label for="headers">Headers (JSON):</label>
+            <textarea id="headers" name="headers" placeholder='{"Content-Type": "application/json"}'></textarea>
+            <label for="body">Body (optional):</label>
+            <textarea id="body" name="body" placeholder="Request body"></textarea>
+            <button type="submit">Replay</button>
+        </form>
+        <div id="response_display"></div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+</body>
+</html>
