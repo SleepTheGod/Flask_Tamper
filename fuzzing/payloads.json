@@ -1,0 +1,4 @@
+{
+    "sql_injection": ["' OR '1'='1'; --", "'; DROP TABLE users; --"],
+    "xss": ["<script>alert('xss')</script>", "<img src=x onerror=alert('xss')>"]
+}
