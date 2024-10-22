@@ -45,8 +45,9 @@ def deep_analysis(data):
         if header in suspicious_headers and 'admin' in value:
             anomalies.append(f"Possible admin bypass attempt in {header}: {value}")
     
-    if 'SELECT' in data['body'] or 'DROP' in data['body']:
-        anomalies.append("SQL Injection detected in body")
+    # Check body for potential SQL injection patterns
+    if any(keyword in data['body'] for keyword in ['SELECT', 'DROP', '--', "';--", '"--']):
+        anomalies.append("Possible SQL Injection detected in body")
 
     return anomalies
 
