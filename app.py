@@ -1,61 +1,57 @@
-from flask import Flask, request, render_template, redirect, jsonify
+from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO, emit
 import requests
-import threading
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
-# Store captured HTTP requests and responses
-captured_requests = []
+# Store request log
+request_log = []
 
+# Route for the home page
 @app.route('/')
 def index():
-    # Display the UI for tampering with requests
-    return render_template('index.html', captured_requests=captured_requests)
+    return render_template('index.html')
 
-# Route for intercepting and modifying HTTP requests
-@app.route('/modify_request', methods=['POST'])
-def modify_request():
-    req_data = request.json
-    url = req_data.get('url')
-    method = req_data.get('method')
-    headers = req_data.get('headers')
-    body = req_data.get('body', None)
-
-    # Send the modified request to the target server
-    if method == 'GET':
-        response = requests.get(url, headers=headers)
-    elif method == 'POST':
-        response = requests.post(url, headers=headers, data=body)
-    else:
-        response = requests.request(method, url, headers=headers, data=body)
-
-    # Store the response for inspection
-    captured_requests.append({
-        'request': req_data,
-        'response_status': response.status_code,
-        'response_headers': dict(response.headers),
-        'response_body': response.text
-    })
-
-    return jsonify({
-        'status': response.status_code,
-        'headers': dict(response.headers),
-        'body': response.text
-    })
-
-# Capture HTTP requests from the client side
+# Capture HTTP request and emit to the frontend
 @app.route('/capture', methods=['POST'])
 def capture_request():
     data = request.json
-    captured_requests.append(data)
-    return jsonify(success=True)
+    log_entry = {
+        'url': data['url'],
+        'method': data['method'],
+        'headers': data['headers'],
+        'body': data['body']
+    }
+    request_log.append(log_entry)
+    socketio.emit('new_request', log_entry)
+    return jsonify({'status': 'captured'})
 
-# Route to clear captured requests
-@app.route('/clear', methods=['POST'])
-def clear_captured_requests():
-    captured_requests.clear()
-    return jsonify(success=True)
+# Modify request and replay it
+@app.route('/modify', methods=['POST'])
+def modify_request():
+    data = request.json
+    method = data['method']
+    url = data['url']
+    headers = data['headers']
+    body = data['body']
 
+    # Replay the modified request
+    response = requests.request(method, url, headers=headers, data=body)
+    return jsonify({
+        'status': 'success',
+        'response': {
+            'status_code': response.status_code,
+            'headers': dict(response.headers),
+            'body': response.text
+        }
+    })
+
+# Real-time data handling via SocketIO
+@socketio.on('capture_request')
+def handle_capture_request(data):
+    emit('new_request', data)
+
+# Run Flask with SocketIO
 if __name__ == '__main__':
-    # Start the Flask app
-    app.run(debug=True, port=8080)
+    socketio.run(app, debug=True)
