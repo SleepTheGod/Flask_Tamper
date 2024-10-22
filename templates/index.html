@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flask Tamper</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
 </head>
 <body>
     <h1>Flask Tamper - Advanced HTTP Request Modifier</h1>
@@ -29,19 +30,79 @@
         <h3>Modify and Replay Request</h3>
         <form id="modify_form">
             <label for="url">URL:</label>
-            <input type="text" id="url" name="url" placeholder="Enter URL">
+            <input type="text" id="url" name="url" placeholder="Enter URL" required>
+            
             <label for="method">Method:</label>
-            <input type="text" id="method" name="method" placeholder="GET/POST">
+            <select id="method" name="method" required>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+            </select>
+            
             <label for="headers">Headers (JSON):</label>
-            <textarea id="headers" name="headers" placeholder='{"Content-Type": "application/json"}'></textarea>
+            <textarea id="headers" name="headers" placeholder='{"Content-Type": "application/json"}' required></textarea>
+            
             <label for="body">Body (optional):</label>
             <textarea id="body" name="body" placeholder="Request body"></textarea>
+            
             <button type="submit">Replay</button>
         </form>
         <div id="response_display"></div>
     </div>
 
     <script src="/static/js/script.js"></script>
-    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        // Socket.io connection for real-time updates
+        const socket = io.connect('http://localhost:5000');
+
+        // Listen for new request log entries
+        socket.on('new_request', function(data) {
+            const trafficLog = document.querySelector('#traffic_log tbody');
+            const row = document.createElement('tr');
+            
+            row.innerHTML = `
+                <td>${data.url}</td>
+                <td>${data.method}</td>
+                <td><pre>${JSON.stringify(data.headers, null, 2)}</pre></td>
+                <td><pre>${data.body}</pre></td>
+                <td>
+                    <button onclick="modifyRequest('${data.url}', '${data.method}', ${JSON.stringify(data.headers)}, '${data.body}')">Modify</button>
+                </td>
+            `;
+            trafficLog.appendChild(row);
+        });
+
+        // Modify request fields with captured data
+        function modifyRequest(url, method, headers, body) {
+            document.getElementById("url").value = url;
+            document.getElementById("method").value = method;
+            document.getElementById("headers").value = JSON.stringify(headers, null, 2);
+            document.getElementById("body").value = body;
+        }
+
+        // Handle form submission
+        document.getElementById("modify_form").onsubmit = function(event) {
+            event.preventDefault();
+            const url = document.getElementById("url").value;
+            const method = document.getElementById("method").value;
+            const headers = JSON.parse(document.getElementById("headers").value);
+            const body = document.getElementById("body").value;
+
+            // Send modified request to server for replay
+            fetch('/replay', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ url, method, headers, body })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("response_display").innerText = JSON.stringify(data, null, 2);
+            })
+            .catch(error => console.error('Error:', error));
+        };
+    </script>
 </body>
 </html>
