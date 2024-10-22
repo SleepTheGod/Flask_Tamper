@@ -52,6 +52,38 @@ def modify_request():
 def handle_capture_request(data):
     emit('new_request', data)
 
+def deep_analysis(data):
+    # Perform deep inspection and analysis of the request
+    suspicious_headers = ['Authorization', 'Cookie', 'User-Agent']
+    anomalies = []
+
+    # Check headers for unusual values
+    for header, value in data['headers'].items():
+        if header in suspicious_headers and 'admin' in value:
+            anomalies.append(f"Possible admin bypass attempt in {header}: {value}")
+
+    # Check for suspicious payloads
+    if 'SELECT' in data['body'] or 'DROP' in data['body']:
+        anomalies.append("SQL Injection detected in body")
+
+    return anomalies
+
+@app.route('/capture', methods=['POST'])
+def capture_request():
+    data = request.json
+    anomalies = deep_analysis(data)
+
+    log_entry = {
+        'url': data['url'],
+        'method': data['method'],
+        'headers': data['headers'],
+        'body': data['body'],
+        'anomalies': anomalies
+    }
+    request_log.append(log_entry)
+    socketio.emit('new_request', log_entry)
+    return jsonify({'status': 'captured'})
+
 # Run Flask with SocketIO
 if __name__ == '__main__':
     socketio.run(app, debug=True)
