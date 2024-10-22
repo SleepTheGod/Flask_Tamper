@@ -3,7 +3,6 @@ from sklearn.ensemble import IsolationForest
 import joblib
 
 # Generate sample training data
-# For demonstration, we'll create random data. Replace this with your actual dataset.
 np.random.seed(42)
 X_train = np.random.randn(100, 2)  # 100 samples, 2 features
 X_train = np.concatenate((X_train, np.random.randn(10, 2) + 5))  # Adding some anomalies
