@@ -1,14 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
     const socket = io();
 
+    // Listen for new request log entries
     socket.on("new_request", function (data) {
         const logTable = document.getElementById('traffic_log').getElementsByTagName('tbody')[0];
         const newRow = logTable.insertRow();
         newRow.insertCell(0).innerText = data.url;
         newRow.insertCell(1).innerText = data.method;
-        newRow.insertCell(2).innerText = JSON.stringify(data.headers);
+        newRow.insertCell(2).innerText = JSON.stringify(data.headers, null, 2);
         newRow.insertCell(3).innerText = data.body;
 
+        // Create Modify & Replay button
         const replayButton = document.createElement('button');
         replayButton.innerText = 'Modify & Replay';
         replayButton.addEventListener('click', function () {
@@ -20,6 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
         newRow.insertCell(4).appendChild(replayButton);
     });
 
+    // Handle the Modify & Replay form submission
     document.getElementById('modify_form').addEventListener('submit', function (e) {
         e.preventDefault();
         const url = document.getElementById('url').value;
@@ -50,6 +53,28 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Handle scanning form submission
+    document.getElementById('scan_form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const url = document.getElementById('scan_url').value;
+
+        fetch('/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('scan_result').innerText = JSON.stringify(data.result, null, 2);
+            window.location.href = "/scan_results";  // Redirect to results page
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('scan_result').innerText = "An error occurred during the scan.";
+        });
+    });
+
+    // Function to parse headers from JSON string
     function parseHeaders(headersString) {
         try {
             return JSON.parse(headersString);
